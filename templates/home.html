@@ -131,7 +131,7 @@
                     clear_boundaries();
                     current_hover_feature = feature;
                     if (type_school_url) {
-                        do_remote_school_boundary(type_school_url);
+                        do_remote_school_boundary(type_school_url, feature.properties.School_Nam);
                     }
                 }
 
@@ -150,7 +150,7 @@
 
     var current_hover_layer = null;
     var current_hover_feature = null;
-    function do_remote_school_boundary(url) {
+    function do_remote_school_boundary(url, layer_name) {
 
         var request = $.ajax({
             url: url,
@@ -168,7 +168,7 @@
             var geojson_item = L.esri.Util.arcgisToGeoJSON(msg['channel']['item'][0]);
 
             geojson_item['properties'] = {
-                'name': 'a name',
+                'name': layer_name,
                 'type': 'school_boundary'
             };
 
@@ -199,11 +199,11 @@
                         {#                        return {color: feature.properties.color};#}
                         {#                    },#}
                         onEachFeature: function (feature, layer) {
-                            layer.bindPopup(feature.properties.name);
+                            layer.bindPopup(layer_name);
                         }
                     }
             ).addTo(map);
-            control.addOverlay(current_hover_layer, 'ajax features');
+            control.addOverlay(current_hover_layer, layer_name);
 
         });
 
@@ -213,7 +213,10 @@
 
     }
 
-    do_remote_school_boundary('http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Boys%20grammar%202016/Location/479224.6646455928,193985.50686881563,479224.6646455928,193985.50686881563?');
+    do_remote_school_boundary(
+            'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Boys%20grammar%202016/Location/479224.6646455928,193985.50686881563,479224.6646455928,193985.50686881563?',
+            'John Hampden Grammar School and The Royal Grammar School'
+    );
 
 
 
