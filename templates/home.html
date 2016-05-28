@@ -72,7 +72,7 @@
         url: 'http://cms.esriuk.com/BucksCC/ArcGIS/Rest/Services/b0d05d47-6d5c-49a6-a4e3-8a603d218b43/FeatureServer/0/',
 
         onEachFeature: function (feature, layer) {
-            layer.bindPopup(feature.properties.School_Nam + ' ' + feature.properties.SCHL_TYPE);
+            layer.bindPopup(feature.properties.School_Nam + ' : ' + feature.properties.SCHL_TYPE);
         },
         pointToLayer: function (feature, latlng) {
 
@@ -105,8 +105,22 @@
                         feature.properties.Northing_1
                 );
 
-                if (feature.properties.SCHL_TYPE === 'Upper') {
-                    var type_school_url = 'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Upper schools 2016/';
+                if( current_hover_feature != feature ) {
+
+                    var type_school_url = null;
+                    if (feature.properties.SCHL_TYPE === 'Upper') {
+                        type_school_url = 'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Upper schools 2016/';
+                    }
+                    if (feature.properties.SCHL_TYPE === 'Infant') {
+                        type_school_url = 'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Ages 5 and over 2016/';
+                    }
+                    if (feature.properties.SCHL_TYPE === 'Junior') {
+                        type_school_url = 'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Ages 7 and over 2016/';
+                    }
+                    if (feature.properties.SCHL_TYPE === 'Combined') {
+                        type_school_url = 'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Ages 5 and over 2016/';
+                    }
+
                     type_school_url += '/Location/';
                     type_school_url += feature.properties.Easting_1 + ',' +
                             feature.properties.Northing_1 + ',' +
@@ -114,12 +128,13 @@
                             feature.properties.Northing_1 + '?';
                     console.log(type_school_url);
 
-                    if( current_hover_feature != feature ) {
-                        clear_boundaries();
-                        current_hover_feature = feature;
+                    clear_boundaries();
+                    current_hover_feature = feature;
+                    if (type_school_url) {
                         do_remote_school_boundary(type_school_url);
                     }
                 }
+
 
             });
 
