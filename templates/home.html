@@ -1,0 +1,212 @@
+{% load staticfiles %}
+
+<html>
+<head>
+    <meta charset=utf-8 />
+    <title>Catchment areas</title>
+    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+
+    <!-- Load Leaflet from CDN-->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/leaflet/1.0.0-rc.1/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/leaflet/1.0.0-rc.1/leaflet-src.js"></script>
+
+    <!-- Load Esri Leaflet from CDN -->
+    <script src="{% static 'esri-leaflet-debug_2.js' %}"></script>
+    {#        <script src="https://cdn.jsdelivr.net/leaflet.esri/2.0.0/esri-leaflet.js"></script>#}
+
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="{% static 'proj4/lib/proj4-compressed.js' %}"></script>
+    <script src="{% static 'proj4/source/proj4leaflet.js' %}"></script>
+
+    <style>
+        body { margin:0; padding:0; }
+        #map { position: absolute; top:0; bottom:0; right:0; left:0; }
+    </style>
+</head>
+
+{#http://openlayers.org/en/latest/examples/reprojection.html#}
+
+<body>
+
+<div id="map"></div>
+
+<script>
+
+    {#    <!-- L.esri.get = L.esri.Request.get.JSONP; -->#}
+
+    var map = L.map('map').setView([51.605, -0.6377], 9);
+    var control = L.control.layers([], []).addTo(map);
+
+
+    proj4.defs('EPSG:27700', '+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 ' +
+            '+x_0=400000 +y_0=-100000 +ellps=airy ' +
+            '+towgs84=446.448,-125.157,542.06,0.15,0.247,0.842,-20.489 ' +
+            '+units=m +no_defs');
+
+    L.esri.Support.cors = false;
+    L.esri.basemapLayer('Streets').addTo(map);
+
+
+
+
+
+
+    var boundary_layer = L.esri.featureLayer({
+        url: 'http://cms.esriuk.com/BucksCC/ArcGIS/Rest/Services/9d29725c-5813-431a-bf07-295d7c909684/FeatureServer/0/'
+    });
+    control.addOverlay(boundary_layer, 'boundary');
+    boundary_layer.addTo(map);
+
+
+
+    function clear_boundaries() {
+        map.eachLayer(function (layer) {
+            console.log(layer);
+            if (layer != current_hover_layer && layer.feature && layer.feature.properties.type === 'school_boundary') {
+                map.removeLayer(layer);
+            }
+        });
+    }
+
+    var point_layer = L.esri.featureLayer({
+        url: 'http://cms.esriuk.com/BucksCC/ArcGIS/Rest/Services/b0d05d47-6d5c-49a6-a4e3-8a603d218b43/FeatureServer/0/',
+
+        onEachFeature: function (feature, layer) {
+            layer.bindPopup(feature.properties.School_Nam + ' ' + feature.properties.SCHL_TYPE);
+        },
+        pointToLayer: function (feature, latlng) {
+
+            var geojsonMarkerOptions = {
+                radius: 8,
+                fillColor: "#ff7800",
+                color: "#000",
+                weight: 1,
+                opacity: 1,
+                fillOpacity: 0.8
+            };
+
+            if (feature.properties.SCHL_TYPE === 'Upper') {
+                geojsonMarkerOptions['fillColor'] = '#00ffcc';
+            } else if (feature.properties.SCHL_TYPE === 'Combined') {
+                geojsonMarkerOptions['fillColor'] = '#ccee00';
+            }  else if (feature.properties.SCHL_TYPE === 'Junior') {
+                geojsonMarkerOptions['fillColor'] = '#12cde0';
+            }  else if (feature.properties.SCHL_TYPE === 'Infant') {
+                geojsonMarkerOptions['fillColor'] = '#dd00aa';
+            } else {
+
+            }
+
+            var marker = L.circleMarker(latlng, geojsonMarkerOptions);
+            marker.on('click', function(){
+                console.log(
+                        feature.properties.School_Nam + ' : ' +
+                        feature.properties.Easting_1 + ' : ' +
+                        feature.properties.Northing_1
+                );
+
+                if (feature.properties.SCHL_TYPE === 'Upper') {
+                    var type_school_url = 'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Upper schools 2016/';
+                    type_school_url += '/Location/';
+                    type_school_url += feature.properties.Easting_1 + ',' +
+                            feature.properties.Northing_1 + ',' +
+                            feature.properties.Easting_1 + ',' +
+                            feature.properties.Northing_1 + '?';
+                    console.log(type_school_url);
+
+                    if( current_hover_feature != feature ) {
+                        clear_boundaries();
+                        current_hover_feature = feature;
+                        do_remote_school_boundary(type_school_url);
+                    }
+                }
+
+            });
+
+            return marker;
+        }
+
+    });
+
+    console.log('point_layer');
+    console.log(point_layer);
+    control.addOverlay(point_layer, 'point_layer');
+    point_layer.addTo(map);
+
+    var current_hover_layer = null;
+    var current_hover_feature = null;
+    function do_remote_school_boundary(url) {
+
+        var request = $.ajax({
+            url: url,
+            method: "GET",
+            data: {
+                SpatialRef: 27700,
+                includeGeom: true,
+                format: 'jsonp'
+            },
+            dataType: "jsonp"
+        });
+
+
+        request.done(function (msg) {
+            var geojson_item = L.esri.Util.arcgisToGeoJSON(msg['channel']['item'][0]);
+
+            geojson_item['properties'] = {
+                'name': 'a name',
+                'type': 'school_boundary'
+            };
+
+            geojson_item['crs'] = {
+                'type': 'name',
+                'properties': {
+                    'name': 'EPSG:27700'
+                }
+            };
+
+            console.log('ajax item');
+            console.log(geojson_item);
+
+            var feature_wrapper = {
+                "type": "FeatureCollection",
+                "features": [
+                    geojson_item
+                ]
+            };
+
+            console.log('Ajax feature collection');
+            console.log(feature_wrapper);
+
+            current_hover_layer = L.Proj.geoJson(
+                    feature_wrapper,
+                    {
+                        {#                    style: function (feature) {#}
+                        {#                        return {color: feature.properties.color};#}
+                        {#                    },#}
+                        onEachFeature: function (feature, layer) {
+                            layer.bindPopup(feature.properties.name);
+                        }
+                    }
+            ).addTo(map);
+            control.addOverlay(current_hover_layer, 'ajax features');
+
+        });
+
+        request.fail(function (jqXHR, textStatus) {
+            console.log("Request failed: " + textStatus);
+        });
+
+    }
+
+    do_remote_school_boundary('http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Boys%20grammar%202016/Location/479224.6646455928,193985.50686881563,479224.6646455928,193985.50686881563?');
+
+
+
+
+
+
+
+</script>
+
+</body>
+</html>
