@@ -21,5 +21,7 @@ urlpatterns = [
     url(r'^$', views.home, name='home'),
     url(r'^home', views.home, name='home'),
 
+    url(r'^record_geojson/', views.record_geojson, name='record_geojson'),
+
     url(r'^admin/', admin.site.urls),
 ]

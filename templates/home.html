@@ -20,7 +20,31 @@
 
     <style>
         body { margin:0; padding:0; }
-        #map { position: absolute; top:0; bottom:0; right:0; left:0; }
+        #map {
+        {#            position: absolute; #}
+            top:0; bottom:0; right:0; left:0;
+            height: 100%;
+            width: 100%;
+        }
+        .btn {
+            height: 1em;
+            width: 10em;
+            float: right;
+            display: block;
+            position: absolute;
+            right: 1em;
+            top: 10em;
+            padding: 1em;
+            background: whitesmoke;
+            z-index: 999;
+            text-align: center;
+        }
+        .btn2 {
+            top: 14em;
+        }
+        .btn:focus, .btn:hover {
+            border: groove 2px gray;
+        }
     </style>
 </head>
 
@@ -29,6 +53,10 @@
 <body>
 
 <div id="map"></div>
+
+<div id="download_btn" class="btn">Download</div>
+<div id="save_btn" class="btn btn2">Save</div>
+
 
 <script>
 
@@ -44,11 +72,29 @@
             '+units=m +no_defs');
 
     L.esri.Support.cors = false;
-    L.esri.basemapLayer('Streets').addTo(map);
+    {#    L.esri.basemapLayer('Streets').addTo(map);#}
 
 
 
+    {#http://d3rykcmoi4kytu.cloudfront.net/apu/1945/{TileMatrix}/{TileCol}/{TileRow}.png#}
 
+    {#    var boundary_layer3 = L.esri.featureLayer({#}
+    {#        url: 'http://d3rykcmoi4kytu.cloudfront.net/apu/1945/{TileMatrix}/{TileCol}/{TileRow}.png'#}
+    {#    });#}
+    {#    control.addOverlay(boundary_layer3, 'boundary');#}
+    {#    boundary_layer3.addTo(map);#}
+
+    L.tileLayer(
+
+            {#                    'http://d3rykcmoi4kytu.cloudfront.net/apu/1945/{z}/{x}/{y}.png',#}
+
+            'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            {
+                attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>',
+                maxZoom: 15,
+                id: 'your.mapbox.project.id',
+                accessToken: 'your.mapbox.public.access.token'
+            }).addTo(map);
 
 
     var boundary_layer = L.esri.featureLayer({
@@ -61,7 +107,6 @@
 
     function clear_boundaries() {
         map.eachLayer(function (layer) {
-            console.log(layer);
             if (layer != current_hover_layer && layer.feature && layer.feature.properties.type === 'school_boundary') {
                 map.removeLayer(layer);
             }
@@ -73,6 +118,17 @@
 
         onEachFeature: function (feature, layer) {
             layer.bindPopup(feature.properties.School_Nam + ' : ' + feature.properties.SCHL_TYPE);
+
+{#            Careful, this loads everything!! #}
+
+{#            var type_school_url = getFeatureDescriptionURL(feature);#}
+{#            if (type_school_url) {#}
+{#                do_remote_school_boundary(type_school_url, feature.properties.School_Nam);#}
+{#            }#}
+
+
+
+
         },
         pointToLayer: function (feature, latlng) {
 
@@ -107,34 +163,15 @@
 
                 if( current_hover_feature != feature ) {
 
-                    var type_school_url = null;
-                    if (feature.properties.SCHL_TYPE === 'Upper') {
-                        type_school_url = 'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Upper schools 2016/';
-                    }
-                    if (feature.properties.SCHL_TYPE === 'Infant') {
-                        type_school_url = 'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Ages 5 and over 2016/';
-                    }
-                    if (feature.properties.SCHL_TYPE === 'Junior') {
-                        type_school_url = 'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Ages 7 and over 2016/';
-                    }
-                    if (feature.properties.SCHL_TYPE === 'Combined') {
-                        type_school_url = 'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Ages 5 and over 2016/';
-                    }
-
-                    type_school_url += '/Location/';
-                    type_school_url += feature.properties.Easting_1 + ',' +
-                            feature.properties.Northing_1 + ',' +
-                            feature.properties.Easting_1 + ',' +
-                            feature.properties.Northing_1 + '?';
-                    console.log(type_school_url);
-
                     clear_boundaries();
                     current_hover_feature = feature;
+
+                    var type_school_url = getFeatureDescriptionURL(feature);
                     if (type_school_url) {
                         do_remote_school_boundary(type_school_url, feature.properties.School_Nam);
+
                     }
                 }
-
 
             });
 
@@ -143,6 +180,40 @@
 
     });
 
+    function getFeatureDescriptionURL(feature) {
+        var type_school_url = null;
+
+        if (feature.properties.SCHL_TYPE === 'Upper') {
+            type_school_url = 'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Upper schools 2016/';
+        }
+        if (feature.properties.SCHL_TYPE === 'Infant') {
+            type_school_url = 'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Ages 5 and over 2016/';
+        }
+        if (feature.properties.SCHL_TYPE === 'Junior') {
+            type_school_url = 'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Ages 7 and over 2016/';
+        }
+        if (feature.properties.SCHL_TYPE === 'Combined') {
+            type_school_url = 'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Ages 5 and over 2016/';
+        }
+        if (feature.properties.SCHL_TYPE === 'Grammar') {
+            if (feature.properties.School_Nam.indexOf('Girls') > -1) {
+                type_school_url = 'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Girls grammar 2016/';
+            } else {
+                type_school_url = 'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Boys grammar 2016/';
+            }
+        }
+        if (feature.properties.SCHL_TYPE === 'All Through') {
+            type_school_url = 'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Ages 5 and over 2016/';
+        }
+        type_school_url += '/Location/';
+        type_school_url += feature.properties.Easting_1 + ',' +
+                feature.properties.Northing_1 + ',' +
+                feature.properties.Easting_1 + ',' +
+                feature.properties.Northing_1 + '?';
+        console.log(type_school_url);
+        return type_school_url;
+    }
+
     console.log('point_layer');
     console.log(point_layer);
     control.addOverlay(point_layer, 'point_layer');
@@ -150,6 +221,25 @@
 
     var current_hover_layer = null;
     var current_hover_feature = null;
+    var current_hover_layer_geojson = null;
+
+    {#    A dict of geojson for the school, keys are school name #}
+    var school_items = {};
+
+    function post_geojson(geojson_string) {
+        var request = $.ajax({
+            url: "{% url 'record_geojson' %}",
+            method: "POST",
+            data: {
+                "geojson_str": geojson_string
+            }
+        });
+        request.done(function (msg) {
+            console.log(msg);
+            alert('You posted JSON length ' + msg.toString().length);
+        });
+    }
+
     function do_remote_school_boundary(url, layer_name) {
 
         var request = $.ajax({
@@ -178,6 +268,7 @@
                     'name': 'EPSG:27700'
                 }
             };
+            school_items[layer_name] = geojson_item;
 
             console.log('ajax item');
             console.log(geojson_item);
@@ -192,6 +283,7 @@
             console.log('Ajax feature collection');
             console.log(feature_wrapper);
 
+            current_hover_layer_geojson = feature_wrapper;
             current_hover_layer = L.Proj.geoJson(
                     feature_wrapper,
                     {
@@ -203,6 +295,7 @@
                         }
                     }
             ).addTo(map);
+
             control.addOverlay(current_hover_layer, layer_name);
 
         });
@@ -213,14 +306,45 @@
 
     }
 
-    do_remote_school_boundary(
-            'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Boys%20grammar%202016/Location/479224.6646455928,193985.50686881563,479224.6646455928,193985.50686881563?',
-            'John Hampden Grammar School and The Royal Grammar School'
-    );
+    {#    do_remote_school_boundary(#}
+    {#            'http://cms.esriuk.com/BucksCC/ServiceProxies/Feed/Rest/Boys%20grammar%202016/Location/479224.6646455928,193985.50686881563,479224.6646455928,193985.50686881563?',#}
+    {#            'John Hampden Grammar School and The Royal Grammar School'#}
+    {#    );#}
 
 
+    $('#download_btn').click(function () {
+        if (current_hover_layer_geojson != null) {
+            post_geojson(JSON.stringify(current_hover_layer_geojson, null, '\t'));
+        }
+    });
+
+    $('#save_btn').click(function () {
+
+        var feature_list = $.map(school_items, function(value, key) { return value });
+
+        var feature_wrapper = {
+                "type": "FeatureCollection",
+                "features": feature_list
+            };
+
+        saveData(feature_wrapper, 'geojson.json');
+    });
 
 
+    var saveData = (function () {
+        var a = document.createElement("a");
+        document.body.appendChild(a);
+        a.style = "display: none";
+        return function (data, fileName) {
+            var json = JSON.stringify(data, null, '\t'),
+                    blob = new Blob([json], {type: "octet/stream"}),
+                    url = window.URL.createObjectURL(blob);
+            a.href = url;
+            a.download = fileName;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        };
+    }());
 
 
 
